@@ -16,6 +16,7 @@ const game = (function () {
         function get() {
             return board;
         }
+        return {get};
     })();
 
     const winConditions = (function () {
@@ -39,9 +40,14 @@ const game = (function () {
 
         wins.push(diag1, diag2);
 
+        function get() {
+            return wins;
+        }
+
         const check = (owned, target) => target.every(t => owned.includes(t)); 
     
-        return {check};
+
+        return {get, check};
     })();
 
 
