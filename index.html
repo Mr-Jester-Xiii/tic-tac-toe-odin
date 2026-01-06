@@ -1,12 +1,52 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
     <title>Tic-tac-toe</title>
 </head>
+
 <body>
-    <div id="gameboard"></div>
+    <div id="container">
+        <div class="pagetitle">
+            Tic-Tac-Toe
+        </div>
+        <div id="game-container">
+            <div id="start-screen">
+                <div class="title">Who's playing?</div>
+                <div class="player-input">
+                    <input type="text" id="player1name" placeholder="Player 1" name="text" class="input">
+                </div>
+                <div class="player-input">
+                    <input type="text" id="player2name" placeholder="Player 2" name="text" class="input">
+                </div>
+                <button class="btn" id="beginBtn">Begin</button>
+            </div>
+            <div id="game-screen">
+                <div id="player-names">Josh vs Anna</div>
+                <div id="gameboard">
+                    <div class="cell"></div>
+                    <div class="cell"></div>
+                    <div class="cell"></div>
+                    <div class="cell"></div>
+                    <div class="cell"></div>
+                    <div class="cell"></div>
+                    <div class="cell"></div>
+                    <div class="cell"></div>
+                    <div class="cell"></div>
+                </div>
+                <div id="game-message">Josh's turn!</div>
+            </div>
+            <div id="end-screen">
+                <button class="btn" id="rematchBtn">Rematch</button>
+                <button class="btn" id="resetBtn">Reset</button>
+            </div>
+        </div>
+    </div>
+
 </body>
 <script src="script.js"></script>
+
 </html>
