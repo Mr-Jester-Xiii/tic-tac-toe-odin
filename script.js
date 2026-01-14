@@ -1,144 +1,178 @@
 const game = (function () {
-    const startScreen = document.getElementById('start-screen');
-    const gameScreen = document.getElementById('game-screen');
-    const endScreen = document.getElementById('end-screen');
-
-    let rows = 3;
-    let cols = 3;
-
     const board = (function () {
+        let rows = 3;
+        let cols = 3;
         let board = [];
-        let cellNum = 1;
-        for (let i = 0; i < rows; i++) {
-            let row = [];
-            for (let i = 0; i < cols; i++) {
-                row.push(cellNum);
-                cellNum++;
-            }
-            board.push(row);
+
+        for (let i = 0; i < (rows * cols); i++) {
+            board.push(null);
         }
+
+        function reset() {
+            board.fill(null);
+        }
+
+        function setCell(index, symbol) {
+            board[index] = symbol;
+            ui.placeSymbol(index, symbol);
+        }
+
         function get() {
             return board;
         }
-        return { get };
+        return {
+            reset,
+            setCell,
+            get
+        }
     })();
 
-    const winConditions = (function () {
-        const arr = board.get();
-        let wins = [];
-
-        // Row
-        arr.forEach(row => {
-            wins.push(row);
-        });
-
-        // Col
-        for (i = 0; i < arr.length; i++) {
-            let col = arr.map(row => row[i]);
-            wins.push(col);
-        }
-
-        // Diags
-        diag1 = arr.map((row, i) => row[i]);
-        diag2 = arr.map((row, i) => row[arr.length - 1 - i]);
-
-        wins.push(diag1, diag2);
-
-        function get() {
-            return wins;
-        }
-
-        const check = (owned, targets) => targets.find(target => target.every(t => owned.includes(t)));
-
-
-        return { get, check };
-    })();
-
-    const player = (function () {
-        const p1 = {
+    const playerManager = (function () {
+        player1 = {
             num: 1,
-            name: '',
-            symbol: "✕",
-            ownedCells: []
-        }
-        const p2 = {
+            name: null,
+            symbol: "✕"
+        };
+        player2 = {
             num: 2,
-            name: '',
-            symbol: "○",
-            ownedCells: []
+            name: null,
+            symbol: "○"
+        };
+
+        let currentPlayer = null;
+
+        function setPlayers(name1, name2) {
+            player1.name = name1;
+            player2.name = name2;
+            currentPlayer = player1;
         }
 
-        let activePlayer = p1;
+        function swapPlayer() {
+            currentPlayer = currentPlayer === player1 ? player2 : player1;
+        }
 
-        function current() {
-            return activePlayer;
+        function getCurrentPlayer() {
+            return currentPlayer
         }
-        function claim(cell) {
-            const num = parseInt(cell.dataset.cell);
 
-            activePlayer.ownedCells.push(num);
-            cell.textContent = activePlayer.symbol;
-            cell.classList.add('claimed');
-            if (activePlayer.num === 1) {
-                cell.classList.add('p1cell');
-            } else {
-                cell.classList.add('p2cell');
-            }
-        }
-        function swap() {
-            activePlayer = activePlayer === p1 ? p2 : p1;
-        }
-        function getClaimedCells() {
-            let cells = p1.ownedCells.concat(p2.ownedCells);
-            return cells;
-        }
-        function assignNames(p1name, p2name) {
-            p1.name = p1name;
-            p2.name = p2name;
-        }
         function getNames() {
-            return {P1: p1.name, P2: p2.name}
+            return [player1.name, player2.name];
         }
-        return { current, claim, swap, getClaimedCells, assignNames, getNames };
+        return {
+            setPlayers,
+            swapPlayer,
+            getCurrentPlayer,
+            getNames
+        }
+    })();
+
+    const logic = (function () {
+        // Responsible for all win/tie rules and game conditions
+        const winConditions = [
+            // Rows
+            [0, 1, 2],
+            [3, 4, 5],
+            [6, 7, 8],
+            //Columns
+            [0, 3, 6],
+            [1, 4, 7],
+            [2, 5, 8],
+            //Diagonals
+            [0, 4, 8],
+            [2, 4, 6]
+        ];
+
+        function checkEnd(player) {
+            const gameState = {
+                end: false,
+                tie: false,
+                match: null
+            };
+
+            const boardState = board.get();
+            const symbol = player.symbol;
+            let winPattern = winConditions.find(condition => condition.every(index => boardState[index] === symbol));
+            if (winPattern) {
+                gameState.end = true;
+                gameState.match = winPattern;
+            } else {
+                let nullsInBoard = boardState.some(cell => cell === null);
+                if (!nullsInBoard) {
+                    gameState.end = true;
+                    gameState.tie = true;
+                }
+            }
+            return gameState;
+        }
+        return {
+            checkEnd
+        }
     })();
 
     const ui = (function () {
-        function selectCell(event) {
-            playTurn(event.currentTarget);
-        }
+        // Responsible for displaying information and capturing input
+        // Function to assign board index values to cells.
+        const cells = document.querySelectorAll('.cell');
 
-        function show(target) {
-                target.style.display = 'flex';
-        }
-        function hide(target) {
-                target.style.display = 'none';
-        }
-
-
-        function prepare() {
-            const cells = document.querySelectorAll('.cell');
-            const numbers = board.get().flat();
-
+        const prepareBoard = (function () {
             cells.forEach((cell, i) => {
-                cell.dataset.cell = numbers[i];
-                cell.textContent = '';
-                cell.classList.remove('claimed');
-                cell.addEventListener('click', selectCell);
+                cell.dataset.cell = i;
+                cell.onclick = () => playTurn(i);
             });
-            const names = player.getNames();
-            document.getElementById('player-names').textContent = names.P1 + ' vs ' + names.P2;
-            displayMessage(names.P1 + '\'s turn')
+        })();
 
+        const assignButtonFunction = (function () {
+            const beginBtn = document.getElementById('beginBtn');
+            beginBtn.onclick = () => newGame();
+
+            const rematchBtn = document.getElementById('rematchBtn');
+            rematchBtn.onclick = () => rematch();
+
+            const resetBtn = document.getElementById('resetBtn');
+            resetBtn.onclick = () => reset();
+        })();
+
+        // Function to populate a cell with the current players symbol
+        function placeSymbol(i, symbol) {
+            const cell = document.querySelector(`[data-cell='${i}']`);
+            cell.textContent = symbol;
+            cell.classList.add('locked');
+            symbol === "✕" ? cell.classList.add('p1cell') : cell.classList.add('p2cell');
         }
 
+        // Function(s) to handle UI messaging (X's Turn, X wins etc);
         function displayMessage(message) {
             document.getElementById('game-message').textContent = message;
         }
 
+        function populateTitle(name1, name2) {
+            document.getElementById('player-names').textContent = name1 + ' vs ' + name2;
+        }
+
+        // Function to take name input from inputs and call player name assignment.
+        function populateNames() {
+            const p1nameInput = document.getElementById('player1name');
+            const p2nameInput = document.getElementById('player2name');
+            const p1name = p1nameInput.value ? p1nameInput.value : 'Unknown';
+            const p2name = p2nameInput.value ? p2nameInput.value : 'Unknown';
+
+            return [p1name, p2name];
+        }
+
+        // Show/hide intro page + win screen
+        function showDiv(id, bool) {
+            const div = document.getElementById(id);
+            if (bool) {
+                div.style.display = 'flex';
+            } else {
+                div.style.display = 'none';
+            }
+        }
+
+        // Highlight the winning row/col on the board
         function highlightWin(match) {
-            console.log(match);
             const numberSet = new Set(match.map(String));
-            document.querySelectorAll('.cell').forEach(cell => {
+            cells.forEach(cell => {
                 const id = cell.dataset.cell;
                 console.log(id);
                 if (numberSet.has(id)) {
@@ -147,60 +181,81 @@ const game = (function () {
             });
         }
 
-        // gameEnd
-        return { prepare, show, hide, displayMessage, highlightWin };
+        // Reset the board (Empty divs, remove highlighting classes.)
+        function resetBoard() {
+            cells.forEach(cell => {
+                cell.textContent = '';
+                cell.classList.remove('p1cell', 'p2cell', 'locked', 'winner');
+            });
+        }
+
+        function lockBoard() {
+            cells.forEach(cell => {
+                cell.classList.add('locked');
+            });
+        }
+
+        return {
+            placeSymbol,
+            displayMessage,
+            populateTitle,
+            populateNames,
+            showDiv,
+            highlightWin,
+            resetBoard,
+            lockBoard
+        }
     })();
 
-
+    // Core functions
+    function newGame() {
+        let [name1, name2] = ui.populateNames();
+        playerManager.setPlayers(name1, name2);
+        ui.populateTitle(name1, name2);
+        ui.displayMessage(name1 + '\'s turn.');
+        ui.showDiv('start-screen', false);
+        ui.showDiv('game-screen', true);
+    };
+    function reset() {
+        ui.showDiv('start-screen', true);
+        ui.showDiv('game-screen', false);
+        ui.showDiv('end-screen', false);
+        board.reset();
+        ui.resetBoard();
+    };
+    function rematch() {
+        ui.resetBoard();
+        board.reset();
+        ui.showDiv('end-screen', false);
+        const [name1, name2] = playerManager.getNames();
+        playerManager.setPlayers(name1, name2);
+        ui.displayMessage(name1 + '\'s turn.');
+    };
     function playTurn(cell) {
-        let p = player.current();
-        player.claim(cell);
-        let conditions = winConditions.get();
-        let gameover = false;
-        let match = winConditions.check(p.ownedCells, conditions);
-
-        if (match) {
-            game.win(p, match);
-        } else if (player.getClaimedCells().length === 9) {
-            game.tie();
+        let p = playerManager.getCurrentPlayer();
+        board.setCell(cell, p.symbol);
+        gameState = logic.checkEnd(p);
+        console.log(gameState);
+        if (gameState.end) {
+            if (gameState.tie) {
+                gameTie();
+            } else {
+                gameWon(p);
+                ui.highlightWin(gameState.match);
+            }
         } else {
-            player.swap();
-            ui.displayMessage(player.current().name + '\'s turn');
+            playerManager.swapPlayer();
+            p = playerManager.getCurrentPlayer();
+            ui.displayMessage(p.name + '\'s turn.')
         }
     }
-
-    function win(p, match) {
-        let cells = document.querySelectorAll('.cell');
-        cells.forEach(cell => {
-            cell.classList.add('claimed');
-        });
+    function gameTie() {
+        ui.lockBoard();
+        console.log('it\'s a draw');
+    }
+    function gameWon(p) {
+        ui.lockBoard();
         ui.displayMessage(p.name + ' wins!');
-        ui.highlightWin(match);
-        ui.show(endScreen);
+        ui.showDiv('end-screen', true);
     }
-
-    function tie() {
-        ui.displayMessage('It\'s a Tie!');
-    }
-
-    function newGame() {
-        let p1nameInput = document.getElementById('player1name');
-        let p2nameInput = document.getElementById('player2name');
-        let p1name = p1nameInput.value ? p1nameInput.value : 'Unknown';
-        let p2name = p2nameInput.value ? p2nameInput.value : 'Unknown';
-
-        player.assignNames(p1name, p2name);
-        ui.prepare();
-        ui.hide(startScreen);
-        ui.show(gameScreen);
-    }
-
-    let beginBtn = document.getElementById('beginBtn');
-    beginBtn.addEventListener('click', newGame);
-
-
-    let rematchBtn = document.getElementById('rematchBtn');
-    let resetBtn = document.getElementById('resetBtn');
-
-    return { board, player, winConditions, ui, playTurn, win, tie, newGame }
 })();

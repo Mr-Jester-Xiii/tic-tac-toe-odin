@@ -206,7 +206,7 @@ html {
     cursor: pointer;
 }
 
-.cell.claimed {
+.cell.locked {
     cursor: default;
     pointer-events: none;
 }
