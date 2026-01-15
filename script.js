@@ -251,7 +251,8 @@ const game = (function () {
     }
     function gameTie() {
         ui.lockBoard();
-        console.log('it\'s a draw');
+        ui.displayMessage('It\'s a Tie!');
+        ui.showDiv('end-screen', true);
     }
     function gameWon(p) {
         ui.lockBoard();
